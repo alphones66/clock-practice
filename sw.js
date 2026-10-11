@@ -1,13 +1,13 @@
-const CACHE = 'clock-pages-v1';
+const CACHE = 'clock-pages-v2';
 const FILES = [
   './',
   'index.html',
   'manifest.json',
   'music.js',
   'tick.mp3',
-  'app-icon-180.png',
-  'app-icon-192.png',
-  'app-icon-512.png'
+  'clock-icon-180.png',
+  'clock-icon-192.png',
+  'clock-icon-512.png'
 ];
 
 self.addEventListener('install', event => {
