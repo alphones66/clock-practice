@@ -36,6 +36,10 @@
     #menu { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px 16px; }
     #menu h1 { margin: 0 0 12px; font-size: clamp(34px, 6vw, 48px); color: #173b43; letter-spacing: .03em; }
     .home-btn { position: absolute; top: 18px; left: 18px; text-decoration: none; font-size: 25px; }
+    .mode-select, #level-select { width: min(440px, 90vw); display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    #level-select { display: none; }
+    #mode-caption { margin: 0 0 2px; color: #668187; font-size: 20px; font-weight: 700; }
+    .mode-back { width: 100%; padding: 10px 16px; font-size: 18px; text-align: center; }
     .level {
       width: min(440px, 90vw); padding: 14px 20px; font-size: 24px; font-weight: 750;
       text-align: left; border: 2px solid #e2eeeb; border-radius: 18px; background: rgba(255,255,255,.9); color: #173b43;
@@ -68,6 +72,7 @@
 
     .question { width: 100%; background: #f2f8f6; text-align: center; padding: 14px; border-radius: 20px; }
     .question div:first-child { font-size: 21px; font-weight: 650; color: #668187; }
+    #simple-hint { margin-top: 7px; padding: 8px 12px; border-radius: 12px; background: #dff3ed; color: #1c655a; font-size: clamp(16px, 2.6vh, 20px); font-weight: 750; }
     .target-row { display: flex; align-items: center; justify-content: center; gap: 12px; }
     #speak { font-size: 27px; width: 48px; height: 48px; border-radius: 15px; border: 0; background: #dff3ed; cursor: pointer; padding: 0; }
     #speak:active { transform: scale(.92); }
@@ -145,10 +150,18 @@
 <div id="menu">
   <a href="./" class="round-btn home-btn" aria-label="回主頁">🏠</a>
   <h1>🕘 時鐘練習</h1>
-  <button class="level" data-step="60">整點<small>例：9:00</small></button>
-  <button class="level" data-step="30">半點<small>例：9:30</small></button>
-  <button class="level" data-step="5">每 5 分鐘<small>例：9:25</small></button>
-  <button class="level" data-step="1">每 1 分鐘<small>例：9:47</small></button>
+  <div class="mode-select" id="mode-select">
+    <button class="level" data-mode="general">一般版<small>自由調整時針和分針</small></button>
+    <button class="level" data-mode="simple">簡單版<small>先調時針，再調分針</small></button>
+  </div>
+  <div id="level-select">
+    <button class="level mode-back" id="mode-back">← 選擇版本</button>
+    <div id="mode-caption">選擇練習難度</div>
+    <button class="level" data-step="60">整點<small>例：9:00</small></button>
+    <button class="level" data-step="30">半點<small>例：9:30</small></button>
+    <button class="level" data-step="5">每 5 分鐘<small>例：9:25</small></button>
+    <button class="level" data-step="1">每 1 分鐘<small>例：9:47</small></button>
+  </div>
 </div>
 
 <!-- 遊戲 -->
@@ -166,6 +179,7 @@
       </div>
       <div class="question">
         <div>將時間調整為</div>
+        <div id="simple-hint" hidden></div>
         <div class="target-row">
           <span id="target">9:00</span>
           <button id="speak" aria-label="唸出時間">🔊</button>
@@ -199,6 +213,8 @@ const $ = id => document.getElementById(id);
 
 // ---------- 狀態 ----------
 let step = 60;         // 題目間隔（分鐘）
+let mode = 'general';
+let simpleStage = 'hour';
 let total = 0;         // 時鐘目前時間，0~719 分鐘（12 小時制）
 let target = 0;        // 題目時間
 let ok = 0, ng = 0, qIndex = 0, locked = false;
@@ -265,6 +281,15 @@ el('circle', { r: 16, fill: '#173b43' });
 function render() {
   minuteHand.setAttribute('transform', `rotate(${(total % 60) * 6})`);
   hourHand.setAttribute('transform', `rotate(${total / 2})`);
+  minuteHand.style.pointerEvents = mode === 'simple' && simpleStage === 'hour' ? 'none' : '';
+  hourHand.style.pointerEvents = mode === 'simple' && simpleStage === 'minute' ? 'none' : '';
+  const hint = $('simple-hint');
+  hint.hidden = mode !== 'simple';
+  if (mode === 'simple') {
+    hint.textContent = simpleStage === 'hour'
+      ? '第 1 步：先把短針（時針）轉到題目的小時數'
+      : '時針到位！第 2 步：再調長針（分針）到正確分鐘';
+  }
 }
 
 // ---------- 拖曳 ----------
@@ -280,6 +305,10 @@ const wrap = v => ((v % 720) + 720) % 720;
 
 function startDrag(hand, e) {
   if (locked) return;
+  if (mode === 'simple' && (
+    (hand === 'minute' && simpleStage === 'hour')
+    || (hand === 'hour' && simpleStage === 'minute')
+  )) return;
   dragging = hand;
   // iPad 需要在觸控當下建立／喚醒音效，之後拖動時的喀聲才會響
   try {
@@ -309,6 +338,12 @@ svg.addEventListener('pointermove', e => {
     const m = total % 60;
     const h = ((Math.round((a * 2 - m) / 60) % 12) + 12) % 12;
     total = h * 60 + m;
+  }
+  if (mode === 'simple' && simpleStage === 'hour' && dragging === 'hour'
+      && Math.floor(total / 60) % 12 === Math.floor(target / 60) % 12) {
+    simpleStage = 'minute';
+    dragging = null;
+    toast('時針到位！');
   }
   if (total !== before) soundTick();
   render();
@@ -453,10 +488,14 @@ function updateSky(t) {
 function newQuestion() {
   const slots = 720 / step;
   do { target = Math.floor(Math.random() * slots) * step; } while (target === total);
+  simpleStage = mode === 'simple' && Math.floor(total / 60) % 12 === Math.floor(target / 60) % 12
+    ? 'minute'
+    : 'hour';
   $('target').textContent = fmt(target);
   updateSky(target);
   updateScore();
   locked = false;
+  render();
   speakTarget();
 }
 
@@ -495,7 +534,8 @@ $('target').addEventListener('click', speakTarget);
 
 $('help').addEventListener('click', () => {
   const m = target % 60, h = Math.floor(target / 60) || 12;
-  alert(`提示：\n長針（分針）指到 ${String(m).padStart(2, '0')}\n短針（時針）指到 ${h}${m ? ' 和 ' + (h % 12 + 1) + ' 之間' : ''}\n\n目前時鐘是 ${fmt(total)}`);
+  const order = mode === 'simple' ? '\n簡單版：先調時針到正確小時，再調分針。' : '';
+  alert(`提示：${order}\n長針（分針）指到 ${String(m).padStart(2, '0')}\n短針（時針）指到 ${h}${m ? ' 和 ' + (h % 12 + 1) + ' 之間' : ''}\n\n目前時鐘是 ${fmt(total)}`);
 });
 
 function showResult() {
@@ -514,7 +554,17 @@ function startGame(s) {
   newQuestion();
 }
 
-document.querySelectorAll('#menu .level').forEach(b =>
+document.querySelectorAll('#mode-select [data-mode]').forEach(b => b.addEventListener('click', () => {
+  mode = b.dataset.mode;
+  $('mode-select').style.display = 'none';
+  $('level-select').style.display = 'flex';
+  $('mode-caption').textContent = `${mode === 'simple' ? '簡單版' : '一般版'}：選擇練習難度`;
+}));
+$('mode-back').addEventListener('click', () => {
+  $('level-select').style.display = 'none';
+  $('mode-select').style.display = 'flex';
+});
+document.querySelectorAll('#level-select [data-step]').forEach(b =>
   b.addEventListener('click', () => startGame(+b.dataset.step)));
 $('again').addEventListener('click', () => startGame(step));
 $('back').addEventListener('click', () => {

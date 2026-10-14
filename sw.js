@@ -1,6 +1,7 @@
-const CACHE = 'clock-pages-v2';
+const CACHE = 'clock-pages-v3';
 const FILES = [
   './',
+  'index.html',
   'index.html',
   'manifest.json',
   'music.js',
