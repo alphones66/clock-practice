@@ -1,4 +1,4 @@
-const CACHE = 'clock-pages-v3';
+const CACHE = 'clock-pages-v4';
 const FILES = [
   './',
   'index.html',

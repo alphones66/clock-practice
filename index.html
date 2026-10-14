@@ -215,6 +215,7 @@ const $ = id => document.getElementById(id);
 let step = 60;         // 題目間隔（分鐘）
 let mode = 'general';
 let simpleStage = 'hour';
+let simpleHourReached = false;
 let total = 0;         // 時鐘目前時間，0~719 分鐘（12 小時制）
 let target = 0;        // 題目時間
 let ok = 0, ng = 0, qIndex = 0, locked = false;
@@ -281,13 +282,15 @@ el('circle', { r: 16, fill: '#173b43' });
 function render() {
   minuteHand.setAttribute('transform', `rotate(${(total % 60) * 6})`);
   hourHand.setAttribute('transform', `rotate(${total / 2})`);
-  minuteHand.style.pointerEvents = mode === 'simple' && simpleStage === 'hour' ? 'none' : '';
+  minuteHand.style.pointerEvents = mode === 'simple' && simpleStage === 'hour' && !simpleHourReached ? 'none' : '';
   hourHand.style.pointerEvents = mode === 'simple' && simpleStage === 'minute' ? 'none' : '';
   const hint = $('simple-hint');
   hint.hidden = mode !== 'simple';
   if (mode === 'simple') {
     hint.textContent = simpleStage === 'hour'
-      ? '第 1 步：先把短針（時針）轉到題目的小時數'
+      ? simpleHourReached
+        ? '時針因分針跨過整點移動了，請把時針調回題目小時'
+        : '第 1 步：先把短針（時針）轉到題目的小時數'
       : '時針到位！第 2 步：再調長針（分針）到正確分鐘';
   }
 }
@@ -306,7 +309,7 @@ const wrap = v => ((v % 720) + 720) % 720;
 function startDrag(hand, e) {
   if (locked) return;
   if (mode === 'simple' && (
-    (hand === 'minute' && simpleStage === 'hour')
+    (hand === 'minute' && simpleStage === 'hour' && !simpleHourReached)
     || (hand === 'hour' && simpleStage === 'minute')
   )) return;
   dragging = hand;
@@ -341,14 +344,18 @@ svg.addEventListener('pointermove', e => {
   }
   if (mode === 'simple' && simpleStage === 'hour' && dragging === 'hour'
       && Math.floor(total / 60) % 12 === Math.floor(target / 60) % 12) {
+    simpleHourReached = true;
     simpleStage = 'minute';
     dragging = null;
     toast('時針到位！');
   } else if (mode === 'simple' && simpleStage === 'minute' && dragging === 'minute'
       && Math.floor(total / 60) % 12 !== Math.floor(target / 60) % 12) {
     simpleStage = 'hour';
-    dragging = null;
-    toast('時針移動了，請重新調整時針');
+    toast('時針移動了，請把時針調回題目小時');
+  } else if (mode === 'simple' && simpleStage === 'hour' && simpleHourReached
+      && dragging === 'minute'
+      && Math.floor(total / 60) % 12 === Math.floor(target / 60) % 12) {
+    simpleStage = 'minute';
   }
   if (total !== before) soundTick();
   render();
@@ -496,6 +503,7 @@ function newQuestion() {
   simpleStage = mode === 'simple' && Math.floor(total / 60) % 12 === Math.floor(target / 60) % 12
     ? 'minute'
     : 'hour';
+  simpleHourReached = simpleStage === 'minute';
   $('target').textContent = fmt(target);
   updateSky(target);
   updateScore();
