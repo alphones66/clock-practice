@@ -344,6 +344,11 @@ svg.addEventListener('pointermove', e => {
     simpleStage = 'minute';
     dragging = null;
     toast('時針到位！');
+  } else if (mode === 'simple' && simpleStage === 'minute' && dragging === 'minute'
+      && Math.floor(total / 60) % 12 !== Math.floor(target / 60) % 12) {
+    simpleStage = 'hour';
+    dragging = null;
+    toast('時針移動了，請重新調整時針');
   }
   if (total !== before) soundTick();
   render();
