@@ -475,7 +475,7 @@ function timeWords(t) {
   return m === 0 ? `${hw}點鐘` : `${hw}點${m}分`;
 }
 const PRAISES = ['好極了！', '做得好！', '你好棒！', '做對了！'];   // 答對時隨機唸一句
-const speakTarget =() => say(`將時間調整為，${timeWords(target)}`);
+const speakTarget =() => say(timeWords(target));
 
 // ---------- 遊戲流程 ----------
 const fmt = t => `${Math.floor(t / 60) || 12}:${String(t % 60).padStart(2, '0')}`;
